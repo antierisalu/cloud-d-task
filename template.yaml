@@ -1,0 +1,8 @@
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0866a3c8686eaeeba
+      InstanceType: t2.micro
+      KeyName: aws-keypair
+      
