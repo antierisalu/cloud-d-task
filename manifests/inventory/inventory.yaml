@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory
+  template:
+    metadata:
+      labels:
+        app: inventory
+    spec:
+      initContainers:
+      - name: wait-for-inventory-db
+        image: busybox
+        command: ['sh', '-c', 'until nc -z -v -w30 inventory-db.default.svc.cluster.local 5432; do echo waiting for inventory-db; sleep 5; done;']
+      containers:
+      - name: inventory
+        image: antikaz/orcs:inventory2
+        ports:
+          - containerPort: 8080
+        envFrom:
+          - secretRef:
+              name: inventory-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory
+spec:
+  type: LoadBalancer
+  selector:
+    app: inventory
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: inventory-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: inventory
+  minReplicas: 1
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 60
